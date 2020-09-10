@@ -5,18 +5,18 @@ install.packages("SnowballC")
 install.packages("wordcloud")
 install.packages("e1071")
 install.packages("gmodels")
-#load the csv1
+#load the csv
 trump_tweets1 <- read.csv('trumptweets.csv', stringsAsFactors = FALSE)
 #check the structure
 str(trump_tweets1)
-#load the csv2
+#load the csv
 trump_tweets2 <- read.csv('realdonaldtrump.csv', stringsAsFactors = FALSE)
 #check the structure
 str(trump_tweets2)
 #remove a number of the columns from each data set so they match
 trump_tweets1 <- trump_tweets1[c(-1, -2, -5, -6, -7, -8, -9)]
 trump_tweets2 <- trump_tweets2[c(-1, -2, -5, -6, -7, -8)]
-#combine the two data sets
+#combine the two data sets with row bind
 trump_tweet <- rbind(trump_tweets1, trump_tweets2)
 #clean up tweets
 #create word clouds
@@ -46,7 +46,7 @@ trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeNumbers)
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeWords, stopwords())
 #remove punctuation
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removePunctuation)
-#load SnowballC so we can stem words
+#load the SnowballC package
 library(SnowballC)
 #apply wordStem to whole corpus:
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, stemDocument)
@@ -80,7 +80,7 @@ random_tweets$content <- gsub("[[:digit:]]", "", random_tweets$content)
 random_tweets$content <- gsub("http\\w+", "", random_tweets$content)
 random_tweets$content <- gsub("[ \t]{2,}", "", random_tweets$content)
 random_tweets$content <- gsub("^\\s+|\\s+$", "", random_tweets$content)
-#shuffle rows in random tweets data frame
+#shuffle the rows in the data set
 set.seed(42)
 rows <- sample(nrow(random_tweets))
 random_tweets_r <- random_tweets[rows,]
@@ -90,7 +90,7 @@ r <- sample(80000:400000, 1, replace=TRUE)
 random_tweets_r_s <- random_tweets_r[1:r,]
 #combine the two data sets
 tweets <- rbind(trump_tweet, random_tweets_r_s)
-#let's shuffle the rows in the data set
+#let's shuffle the rows in the larger data set
 set.seed(42)
 rows <- sample(nrow(tweets))
 random_tweets <- tweets[rows,]
@@ -100,9 +100,13 @@ random_tweets$label <- factor(random_tweets$label)
 table(random_tweets$label)
 #check the proportions: roughly 80 not trump and 20 trump
 round(prop.table(table(random_tweets$label)) * 100, digits = 1)
-#take a random sample from the entire data set
 set.seed(42)
-random_tweets <- random_tweets[sample(nrow(random_tweets),10000),]
+#pick a random number between 10000 and 15000
+r <- sample(10000:15000, 1, replace=TRUE)
+#take a subset of the larger data set
+random_tweets <- random_tweets[sample(nrow(random_tweets),r),]
+#check the proportions again: roughly 80 not trump and 20 trump
+round(prop.table(table(random_tweets$label)) * 100, digits = 1)
 #create a corpus
 tweet_corpus <- VCorpus(VectorSource(random_tweets$content))
 #inspect the corpus
@@ -126,11 +130,11 @@ tweet_corpus_clean <- tm_map(tweet_corpus_clean, stripWhitespace)
 #create DTM sparse matrix
 tweet_dtm <- DocumentTermMatrix(tweet_corpus_clean)
 #create training and testing data sets
-tweet_dtm_train <- tweet_dtm[1:8000,]
-tweet_dtm_test <- tweet_dtm[8001:10000,]
+tweet_dtm_train <- tweet_dtm[1:11000,]
+tweet_dtm_test <- tweet_dtm[11001:14574,]
 #create vectors of our labels from sms_raw
-tweet_train_labels <- random_tweets[1:8000,]$label
-tweet_test_labels <- random_tweets[8001:10000,]$label
+tweet_train_labels <- random_tweets[1:11000,]$label
+tweet_test_labels <- random_tweets[11001:14574,]$label
 #compare subsets to whole set:
 prop.table(table(tweet_train_labels))
 prop.table(table(tweet_test_labels))
@@ -149,7 +153,8 @@ tweet_freq_words <- findFreqTerms(tweet_dtm_train, 5)
 #create DTM with only most frequent words for train and test sets:
 tweet_dtm_freq_train <- tweet_dtm_train[, tweet_freq_words]
 tweet_dtm_freq_test <- tweet_dtm_test[, tweet_freq_words]
-#as NBs only uses categorical data, need to change numbers to categorical:
+#as NBs only uses categorical data, need to change numbers to categorical.
+#first create a function to change values greater than 0 into "yes" otherwise "no"
 convert_counts <- function(x){
   x <- ifelse(x > 0, "Yes", "No")
 }
@@ -163,9 +168,15 @@ tweet_classifier <- naiveBayes(tweet_train, tweet_train_labels)
 tweet_test_pred <- predict(tweet_classifier, tweet_test)
 #load gmodels:
 library(gmodels)
+#check the results:
 CrossTable(tweet_test_pred, tweet_test_labels, prop.chisq =  FALSE, prop.t = FALSE, prop.r = FALSE, dnn = c('predicted','actual'))
-#build the model:
+#97% of actual Not Trump messages correctly predicted as Not Trump. 76% accuracy in terms of
+#predicting Trump messages. However, 24% were incorrectly predicted as Not Trump when
+#it was a Trump tweet. How would we improve the accuracy?
+#build the model again, this time with laplace estimator of 1:
 tweet_classifier2 <- naiveBayes(tweet_train, tweet_train_labels, laplace = 1)
 #test the new model:
 tweet_test_pred2 <- predict(tweet_classifier2, tweet_test)
+#check the results:
 CrossTable(tweet_test_pred2, tweet_test_labels, prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE, dnn = c('predicted', 'actual'))
+
