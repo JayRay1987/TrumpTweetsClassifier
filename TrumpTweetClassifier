@@ -5,22 +5,22 @@ install.packages("SnowballC")
 install.packages("wordcloud")
 install.packages("e1071")
 install.packages("gmodels")
-#load the csv
+#load the first csv
 trump_tweets1 <- read.csv('trumptweets.csv', stringsAsFactors = FALSE)
-#check the structure
+#check the structure of the first csv
 str(trump_tweets1)
-#load the csv
+#load the second csv
 trump_tweets2 <- read.csv('realdonaldtrump.csv', stringsAsFactors = FALSE)
-#check the structure
+#check the structure of the second csv
 str(trump_tweets2)
-#remove a number of the columns from each data set so they match
+#remove a number of the columns from each data set so they match - we keep date column here but remove later (probably worth removing here)
 trump_tweets1 <- trump_tweets1[c(-1, -2, -5, -6, -7, -8, -9)]
 trump_tweets2 <- trump_tweets2[c(-1, -2, -5, -6, -7, -8)]
 #combine the two data sets with row bind
 trump_tweet <- rbind(trump_tweets1, trump_tweets2)
-#clean up tweets
-#create word clouds
+#load stringr package
 library(stringr)
+#clean up tweets
 trump_tweet$content <- gsub("&amp", "", trump_tweet$content)
 trump_tweet$content <- gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", trump_tweet$content)
 trump_tweet$content <- gsub("@\\w+", "", trump_tweet$content)
@@ -29,12 +29,15 @@ trump_tweet$content <- gsub("[[:digit:]]", "", trump_tweet$content)
 trump_tweet$content <- gsub("http\\w+", "", trump_tweet$content)
 trump_tweet$content <- gsub("[ \t]{2,}", "", trump_tweet$content)
 trump_tweet$content <- gsub("^\\s+|\\s+$", "", trump_tweet$content)
+#load tm package for additional cleaning to data
 library(tm)
-#create corpus
+#create corpus from data frame
 trump_tweet_corpus <- VCorpus(VectorSource(trump_tweet$content))
+#check how many documents in our corpus
 print(trump_tweet_corpus)
+#inspect first two documents
 inspect(trump_tweet_corpus[1:2])
-#view a tweet
+#view the first tweet in the corpus
 as.character(trump_tweet_corpus[[1]])
 #make all text lowercase
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus, content_transformer(tolower))
@@ -179,4 +182,7 @@ tweet_classifier2 <- naiveBayes(tweet_train, tweet_train_labels, laplace = 1)
 tweet_test_pred2 <- predict(tweet_classifier2, tweet_test)
 #check the results:
 CrossTable(tweet_test_pred2, tweet_test_labels, prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE, dnn = c('predicted', 'actual'))
-
+#improvement in predicting actual Not Trump messages - raising to 98.5%. Unfortunately,
+#we see a decrease in the predictive power of Trump messages - falling to 73.6%. Meaning
+#incorrect Not Trump predictions of Trump messages has rose to 26.4%. What's the goal?
+#The goal was to predict Trump messages out of random tweet messages. 74% - 76% is so-so.
