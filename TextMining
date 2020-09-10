@@ -1,0 +1,164 @@
+#load the csv1
+trump_tweets1 <- read.csv('trumptweets.csv', stringsAsFactors = FALSE)
+#check the structure
+str(trump_tweets1)
+#load the csv2
+trump_tweets2 <- read.csv('realdonaldtrump.csv', stringsAsFactors = FALSE)
+#check the structure
+str(trump_tweets2)
+#remove a number of the columns from each data set so they match
+trump_tweets1 <- trump_tweets1[c(-1, -2, -5, -6, -7, -8, -9)]
+trump_tweets2 <- trump_tweets2[c(-1, -2, -5, -6, -7, -8)]
+#combine the two data sets
+trump_tweet <- rbind(trump_tweets1, trump_tweets2)
+#clean up tweets
+#create word clouds
+library(stringr)
+trump_tweet$content <- gsub("&amp", "", trump_tweet$content)
+trump_tweet$content <- gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", trump_tweet$content)
+trump_tweet$content <- gsub("@\\w+", "", trump_tweet$content)
+trump_tweet$content <- gsub("[[:punct:]]", "", trump_tweet$content)
+trump_tweet$content <- gsub("[[:digit:]]", "", trump_tweet$content)
+trump_tweet$content <- gsub("http\\w+", "", trump_tweet$content)
+trump_tweet$content <- gsub("[ \t]{2,}", "", trump_tweet$content)
+trump_tweet$content <- gsub("^\\s+|\\s+$", "", trump_tweet$content)
+library(tm)
+#create corpus
+trump_tweet_corpus <- VCorpus(VectorSource(trump_tweet$content))
+print(trump_tweet_corpus)
+inspect(trump_tweet_corpus[1:2])
+#view a tweet
+as.character(trump_tweet_corpus[[1]])
+#make all text lowercase
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus, content_transformer(tolower))
+#check that lowercasing worked:
+as.character(trump_tweet_corpus_clean[[1]])
+#remove all numbers from tweets
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeNumbers)
+#remove stopwords from tweets
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeWords, stopwords())
+#remove punctuation
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removePunctuation)
+#
+library(SnowballC)
+#apply wordStem to whole corpus:
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, stemDocument)
+#remove unnecessary white space
+trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, stripWhitespace)
+#create dtm out of corpus
+trump_dtm <- DocumentTermMatrix(trump_tweet_corpus_clean)
+#load wordcloud
+library(wordcloud)
+wordcloud(trump_tweet_corpus_clean, scale = c(4,.5), min.freq = 75, max.words = 50, random.order = FALSE, random.color = TRUE, ordered.colors = TRUE)
+#The Donald says "Great" a hell of a lot.
+#add a label column to say these are trump's tweets:
+trump_tweet$label <- 'Trump'
+#let's remove the dates:
+trump_tweet <- trump_tweet[-2]
+#get some random tweets
+#read in random tweets
+random_tweets <- read.csv('randomtweets.csv', header = FALSE, stringsAsFactors = FALSE)
+#remove unnecessary columns
+random_tweets <- random_tweets[c(-1, -2, -3, -4, -5)]
+#change remaining column name
+colnames(random_tweets) <- c("content") 
+#add in column to designate tweets as not Trump
+random_tweets$label <- 'Not Trump'
+#clean up text
+random_tweets$content <- gsub("&amp", "", random_tweets$content)
+random_tweets$content <- gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", random_tweets$content)
+random_tweets$content <- gsub("@\\w+", "", random_tweets$content)
+random_tweets$content <- gsub("[[:punct:]]", "", random_tweets$content)
+random_tweets$content <- gsub("[[:digit:]]", "", random_tweets$content)
+random_tweets$content <- gsub("http\\w+", "", random_tweets$content)
+random_tweets$content <- gsub("[ \t]{2,}", "", random_tweets$content)
+random_tweets$content <- gsub("^\\s+|\\s+$", "", random_tweets$content)
+#
+set.seed(42)
+rows <- sample(nrow(random_tweets))
+random_tweets_r <- random_tweets[rows,]
+#random number generator
+r <- sample(80000:400000, 1, replace=TRUE)
+#take a subset of the larger data set
+random_tweets_r_s <- random_tweets_r[1:r,]
+#combine the two data sets
+tweets <- rbind(trump_tweet, random_tweets_r_s)
+#let's shuffle the rows in the data set
+set.seed(42)
+rows <- sample(nrow(tweets))
+random_tweets <- tweets[rows,]
+#factorise the label column
+random_tweets$label <- factor(random_tweets$label)
+#check the split
+table(random_tweets$label)
+#check the proportions: roughly 80 not trump and 20 trump
+round(prop.table(table(random_tweets$label)) * 100, digits = 1)
+#take a random sample from the entire data set
+set.seed(42)
+random_tweets <- random_tweets[sample(nrow(random_tweets),10000),]
+#create a corpus
+tweet_corpus <- VCorpus(VectorSource(random_tweets$content))
+#inspect the corpus
+inspect(tweet_corpus[1:2])
+#chech one tweet
+as.character(tweet_corpus[[1]])
+#lowercase all tweets
+tweet_corpus_clean <- tm_map(tweet_corpus, content_transformer(tolower))
+#remove all numbers from the corpus
+tweet_corpus_clean <- tm_map(tweet_corpus_clean, removeNumbers)
+#remove stopwords
+tweet_corpus_clean <- tm_map(tweet_corpus_clean, removeWords, stopwords())
+#remove punctuation
+tweet_corpus_clean <- tm_map(tweet_corpus_clean, removePunctuation)
+#load snowball
+library(SnowballC)
+#apply wordStem to whole corpus:
+tweet_corpus_clean <- tm_map(tweet_corpus_clean, stemDocument)
+#remove unnecessary white space
+tweet_corpus_clean <- tm_map(tweet_corpus_clean, stripWhitespace)
+#create DTM sparse matrix
+tweet_dtm <- DocumentTermMatrix(tweet_corpus_clean)
+#create training and testing data sets
+tweet_dtm_train <- tweet_dtm[1:8000,]
+tweet_dtm_test <- tweet_dtm[8001:10000,]
+#create vectors of our labels from sms_raw
+tweet_train_labels <- random_tweets[1:8000,]$label
+tweet_test_labels <- random_tweets[8001:10000,]$label
+#compare subsets to whole set:
+prop.table(table(tweet_train_labels))
+prop.table(table(tweet_test_labels))
+#both are representative of the whole dataset
+library(wordcloud)
+#create a wordcloud of the cleaned tweets messages
+wordcloud(tweet_corpus_clean, scale = c(4,.5), min.freq = 100, max.words = 25, random.order = FALSE, random.color = TRUE, ordered.colors = TRUE)
+#create a subset of the raw sms data set to trump and not_trump
+trump <- subset(random_tweets, label == "Trump")
+not_trump <- subset(random_tweets, label == "Not Trump")
+#create a wordcloud for each subset:
+wordcloud(trump$content, scale = c(3, .5), max.words = 40)
+wordcloud(not_trump$content, scale = c(3, .5), max.words = 40)
+#find the most frequent terms
+tweet_freq_words <- findFreqTerms(tweet_dtm_train, 5)
+#create DTM with only most frequent words for train and test sets:
+tweet_dtm_freq_train <- tweet_dtm_train[, tweet_freq_words]
+tweet_dtm_freq_test <- tweet_dtm_test[, tweet_freq_words]
+#as NBs only uses categorical data, need to change numbers to categorical:
+convert_counts <- function(x){
+  x <- ifelse(x > 0, "Yes", "No")
+}
+#convert using apply and on the columns using margin:
+tweet_train <- apply(tweet_dtm_freq_train, MARGIN = 2, convert_counts)
+tweet_test <- apply(tweet_dtm_freq_test, MARGIN = 2, convert_counts)
+library(e1071)
+#build the model:
+tweet_classifier <- naiveBayes(tweet_train, tweet_train_labels)
+#test the model:
+tweet_test_pred <- predict(tweet_classifier, tweet_test)
+#load gmodels:
+library(gmodels)
+CrossTable(tweet_test_pred, tweet_test_labels, prop.chisq =  FALSE, prop.t = FALSE, prop.r = FALSE, dnn = c('predicted','actual'))
+#build the model:
+tweet_classifier2 <- naiveBayes(tweet_train, tweet_train_labels, laplace = 1)
+#test the new model:
+tweet_test_pred2 <- predict(tweet_classifier2, tweet_test)
+CrossTable(tweet_test_pred2, tweet_test_labels, prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE, dnn = c('predicted', 'actual'))
