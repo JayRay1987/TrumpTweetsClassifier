@@ -46,7 +46,7 @@ trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeNumbers)
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removeWords, stopwords())
 #remove punctuation
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, removePunctuation)
-#
+#load SnowballC so we can stem words
 library(SnowballC)
 #apply wordStem to whole corpus:
 trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, stemDocument)
@@ -80,7 +80,7 @@ random_tweets$content <- gsub("[[:digit:]]", "", random_tweets$content)
 random_tweets$content <- gsub("http\\w+", "", random_tweets$content)
 random_tweets$content <- gsub("[ \t]{2,}", "", random_tweets$content)
 random_tweets$content <- gsub("^\\s+|\\s+$", "", random_tweets$content)
-#
+#shuffle rows in random tweets data frame
 set.seed(42)
 rows <- sample(nrow(random_tweets))
 random_tweets_r <- random_tweets[rows,]
