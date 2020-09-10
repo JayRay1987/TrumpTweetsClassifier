@@ -1,3 +1,10 @@
+#install packages needed
+install.packages("stringr")
+install.packages("tm")
+install.packages("SnowballC")
+install.packages("wordcloud")
+install.packages("e1071")
+install.packages("gmodels")
 #load the csv1
 trump_tweets1 <- read.csv('trumptweets.csv', stringsAsFactors = FALSE)
 #check the structure
