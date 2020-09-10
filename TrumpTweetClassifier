@@ -59,6 +59,8 @@ trump_tweet_corpus_clean <- tm_map(trump_tweet_corpus_clean, stripWhitespace)
 trump_dtm <- DocumentTermMatrix(trump_tweet_corpus_clean)
 #load wordcloud
 library(wordcloud)
+#create a wordcloud showing the most used words by The Donald. Minimum frequency is 75, meaning word must appear at least 75 times in the Donald's tweets.
+#we'll limit the number of words in our wordcloud to 50 - so the top 50.
 wordcloud(trump_tweet_corpus_clean, scale = c(4,.5), min.freq = 75, max.words = 50, random.order = FALSE, random.color = TRUE, ordered.colors = TRUE)
 #The Donald says "Great" a hell of a lot.
 #add a label column to say these are trump's tweets:
